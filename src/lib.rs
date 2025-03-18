@@ -57,7 +57,8 @@
 
 #[cfg_attr(unix, path = "unix.rs")]
 #[cfg_attr(windows, path = "windows.rs")]
-#[cfg_attr(not(any(unix, windows)), path = "stub.rs")]
+#[cfg_attr(target_os = "twizzler", path = "twizzler.rs")]
+#[cfg_attr(not(any(unix, windows, target_os = "twizzler")), path = "stub.rs")]
 mod os;
 use crate::os::{file_len, MmapInner};
 
@@ -78,7 +79,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::os::windows::io::{AsRawHandle, RawHandle};
 use std::slice;
 
-#[cfg(not(any(unix, windows)))]
+#[cfg(not(any(unix, windows, target_os = "twizzler")))]
 pub struct MmapRawDescriptor<'a>(&'a File);
 
 #[cfg(unix)]
@@ -86,6 +87,9 @@ pub struct MmapRawDescriptor(RawFd);
 
 #[cfg(windows)]
 pub struct MmapRawDescriptor(RawHandle);
+
+#[cfg(target_os = "twizzler")]
+pub struct MmapRawDescriptor(os::RawHandle);
 
 pub trait MmapAsRawDesc {
     fn as_raw_desc(&self) -> MmapRawDescriptor;

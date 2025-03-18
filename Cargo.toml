@@ -19,6 +19,9 @@ stable_deref_trait = { version = "1.0", optional = true }
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.151"
 
+[target.'cfg(target_os = "twizzler")'.dependencies]
+twizzler-rt-abi = "0.99.0"
+
 [dev-dependencies]
 tempfile = "3"
 owning_ref = "0.4.1"
