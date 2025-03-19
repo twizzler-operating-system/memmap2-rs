@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io;
 
 use std::os::twizzler::fs::MetadataExt;
-use twizzler_rt_abi::object::{ObjectHandle, MapFlags};
+use twizzler_rt_abi::object::{ObjectHandle, MapFlags, ObjID};
 
 // A stable alternative to https://doc.rust-lang.org/stable/std/primitive.never.html
 enum Never {}
@@ -15,7 +15,7 @@ pub struct MmapInner {
 
 
 impl MmapInner {
-    fn new(id: u128, map_flags: MapFlags, len: usize, off: u64) -> io::Result<MmapInner> {
+    fn new(id: ObjID, map_flags: MapFlags, len: usize, off: u64) -> io::Result<MmapInner> {
         let handle = twizzler_rt_abi::object::twz_rt_map_object(id, map_flags).map_err(|_| std::io::ErrorKind::Other.into())?;
         Ok(Self {
             handle, len, off: off as usize,
