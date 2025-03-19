@@ -26,23 +26,23 @@ impl MmapInner {
     }
 
     pub fn map(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
-        MmapInner::new(f.metadata()?.st_objid().raw(), MapFlags::READ, len, off)
+        MmapInner::new(f.metadata()?.st_objid().into(), MapFlags::READ, len, off)
     }
 
     pub fn map_exec(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
-        MmapInner::new(f.metadata()?.st_objid().raw(), MapFlags::READ | MapFlags::EXEC, len, off)
+        MmapInner::new(f.metadata()?.st_objid().into(), MapFlags::READ | MapFlags::EXEC, len, off)
     }
 
     pub fn map_mut(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
-        MmapInner::new(f.metadata()?.st_objid().raw(), MapFlags::READ | MapFlags::WRITE, len, off)
+        MmapInner::new(f.metadata()?.st_objid().into(), MapFlags::READ | MapFlags::WRITE, len, off)
     }
 
     pub fn map_copy(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
-        MmapInner::new(f.metadata()?.st_objid().raw(), MapFlags::READ, len, off)
+        MmapInner::new(f.metadata()?.st_objid().into(), MapFlags::READ, len, off)
     }
 
     pub fn map_copy_read_only(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
-        MmapInner::new(f.metadata()?.st_objid().raw(), MapFlags::READ, len, off)
+        MmapInner::new(f.metadata()?.st_objid().into(), MapFlags::READ, len, off)
     }
 
     pub fn map_anon(len: usize, _: bool, _: bool, _: Option<u8>) -> io::Result<MmapInner> {
