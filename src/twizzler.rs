@@ -21,7 +21,8 @@ impl MmapInner {
             "mmap failed",
         ))?;
         Ok(Self {
-            handle, len, off: off as usize,
+            // TODO: get this from twizzler crate
+            handle, len, off: off as usize + 0x1000,
         })
     }
 
