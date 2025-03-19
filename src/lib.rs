@@ -79,7 +79,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::os::windows::io::{AsRawHandle, RawHandle};
 use std::slice;
 
-#[cfg(not(any(unix, windows, target_os = "twizzler")))]
+#[cfg(not(any(unix, windows)))]
 pub struct MmapRawDescriptor<'a>(&'a File);
 
 #[cfg(unix)]
@@ -87,9 +87,6 @@ pub struct MmapRawDescriptor(RawFd);
 
 #[cfg(windows)]
 pub struct MmapRawDescriptor(RawHandle);
-
-#[cfg(target_os = "twizzler")]
-pub struct MmapRawDescriptor(os::RawHandle);
 
 pub trait MmapAsRawDesc {
     fn as_raw_desc(&self) -> MmapRawDescriptor;

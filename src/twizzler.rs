@@ -1,26 +1,25 @@
 use std::fs::File;
 use std::io;
 
-use std::os::twizzler::MetadataExt;
+use std::os::twizzler::fs::MetadataExt;
+use twizzler_rt_abi::object::{ObjectHandle, MapFlags};
 
 // A stable alternative to https://doc.rust-lang.org/stable/std/primitive.never.html
 enum Never {}
 
 pub struct MmapInner {
-    handle: RawHandle,
+    handle: ObjectHandle,
     len: usize,
     off: usize,
 }
 
-use twizzler_rt_abi::object::MapFlags;
-pub(crate) type RawHandle = twizzler_rt_abi::object::ObjectHandle; 
 
 impl MmapInner {
-    fn new(id: u128, map_flags: MapFlags, len: usize, off: usize) -> io::Result<MmapInner> {
-        Err(io::Error::new(
-            io::ErrorKind::Other,
-            "platform not supported",
-        ))
+    fn new(id: u128, map_flags: MapFlags, len: usize, off: u64) -> io::Result<MmapInner> {
+        let handle = twizzler_rt_abi::object::twz_rt_map_object(id, map_flags).map_err(|_| std::io::ErrorKind::Other.into())?;
+        Ok(Self {
+            handle, len, off: off as usize,
+        })
     }
 
     pub fn map(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
