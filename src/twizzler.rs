@@ -13,7 +13,7 @@ pub struct MmapInner {
 }
 
 use twizzler_rt_abi::object::MapFlags;
-pub(crate) type = twizzler_rt_abi::object::ObjectHandle; 
+pub(crate) type RawHandle = twizzler_rt_abi::object::ObjectHandle; 
 
 impl MmapInner {
     fn new(id: u128, map_flags: MapFlags, len: usize, off: usize) -> io::Result<MmapInner> {
