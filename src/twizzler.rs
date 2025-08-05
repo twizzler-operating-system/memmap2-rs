@@ -1,10 +1,9 @@
-use std::fs::File;
-use std::io;
+use std::{fs::File, io, os::twizzler::fs::MetadataExt};
 
-use std::os::twizzler::fs::MetadataExt;
-use twizzler_rt_abi::object::{ObjectHandle, MapFlags};
+use twizzler_rt_abi::object::{MapFlags, ObjectHandle};
 
 // A stable alternative to https://doc.rust-lang.org/stable/std/primitive.never.html
+#[allow(unused)]
 enum Never {}
 
 pub struct MmapInner {
@@ -13,16 +12,18 @@ pub struct MmapInner {
     off: usize,
 }
 
-
 impl MmapInner {
     fn new(id: u128, map_flags: MapFlags, len: usize, off: u64) -> io::Result<MmapInner> {
-        let handle = twizzler_rt_abi::object::twz_rt_map_object(id.into(), map_flags).map_err(|_| io::Error::new(
-            io::ErrorKind::Other,
-            "mmap failed",
-        ))?;
+        let handle = twizzler_rt_abi::object::twz_rt_map_object(
+            id.into(),
+            map_flags | MapFlags::NO_NULLPAGE,
+        )
+        .map_err(|_| io::Error::new(io::ErrorKind::Other, "mmap failed"))?;
         Ok(Self {
             // TODO: get this from twizzler crate
-            handle, len, off: off as usize + 0x1000,
+            handle,
+            len,
+            off: off as usize,
         })
     }
 
@@ -31,11 +32,21 @@ impl MmapInner {
     }
 
     pub fn map_exec(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
-        MmapInner::new(f.metadata()?.st_objid().into(), MapFlags::READ | MapFlags::EXEC, len, off)
+        MmapInner::new(
+            f.metadata()?.st_objid().into(),
+            MapFlags::READ | MapFlags::EXEC,
+            len,
+            off,
+        )
     }
 
     pub fn map_mut(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
-        MmapInner::new(f.metadata()?.st_objid().into(), MapFlags::READ | MapFlags::WRITE, len, off)
+        MmapInner::new(
+            f.metadata()?.st_objid().into(),
+            MapFlags::READ | MapFlags::WRITE,
+            len,
+            off,
+        )
     }
 
     pub fn map_copy(len: usize, f: &File, off: u64, _: bool) -> io::Result<MmapInner> {
@@ -46,7 +57,7 @@ impl MmapInner {
         MmapInner::new(f.metadata()?.st_objid().into(), MapFlags::READ, len, off)
     }
 
-    pub fn map_anon(len: usize, _: bool, _: bool, _: Option<u8>) -> io::Result<MmapInner> {
+    pub fn map_anon(_len: usize, _: bool, _: bool, _: Option<u8>) -> io::Result<MmapInner> {
         Err(io::Error::new(
             io::ErrorKind::Other,
             "operation not supported",
@@ -87,16 +98,12 @@ impl MmapInner {
 
     #[inline]
     pub fn ptr(&self) -> *const u8 {
-        unsafe {
-            self.handle.start().add(self.off)
-        }
+        unsafe { self.handle.start().add(self.off) }
     }
 
     #[inline]
     pub fn mut_ptr(&mut self) -> *mut u8 {
-        unsafe {
-            self.handle.start().add(self.off)
-        }
+        unsafe { self.handle.start().add(self.off) }
     }
 
     #[inline]

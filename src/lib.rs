@@ -14,6 +14,7 @@
     clippy::unreadable_literal,
     clippy::upper_case_acronyms,
 )]
+#![allow(unexpected_cfgs)]
 
 //! A cross-platform Rust API for memory mapped buffers.
 //!
@@ -31,8 +32,7 @@
 //! For simple cases [`Mmap`] can be used directly:
 //!
 //! ```
-//! use std::fs::File;
-//! use std::io::Read;
+//! use std::{fs::File, io::Read};
 //!
 //! use memmap2::Mmap;
 //!
@@ -42,7 +42,7 @@
 //! let mut contents = Vec::new();
 //! file.read_to_end(&mut contents)?;
 //!
-//! let mmap = unsafe { Mmap::map(&file)?  };
+//! let mmap = unsafe { Mmap::map(&file)? };
 //!
 //! assert_eq!(&contents[..], &mmap[..]);
 //! # Ok(())
@@ -64,20 +64,22 @@ use crate::os::{file_len, MmapInner};
 
 #[cfg(unix)]
 mod advice;
-#[cfg(unix)]
-pub use crate::advice::{Advice, UncheckedAdvice};
-
-use std::fmt;
 #[cfg(not(any(unix, windows)))]
 use std::fs::File;
-use std::io::{Error, ErrorKind, Result};
-use std::mem;
-use std::ops::{Deref, DerefMut};
 #[cfg(unix)]
 use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
-use std::slice;
+use std::{
+    fmt,
+    io::{Error, ErrorKind, Result},
+    mem,
+    ops::{Deref, DerefMut},
+    slice,
+};
+
+#[cfg(unix)]
+pub use crate::advice::{Advice, UncheckedAdvice};
 
 #[cfg(not(any(unix, windows)))]
 pub struct MmapRawDescriptor<'a>(&'a File);
@@ -198,17 +200,17 @@ impl MmapOptions {
     /// # Example
     ///
     /// ```
-    /// use memmap2::MmapOptions;
     /// use std::fs::File;
+    ///
+    /// use memmap2::MmapOptions;
     ///
     /// # fn main() -> std::io::Result<()> {
     /// let mmap = unsafe {
     ///     MmapOptions::new()
-    ///                 .offset(30)
-    ///                 .map(&File::open("LICENSE-APACHE")?)?
+    ///         .offset(30)
+    ///         .map(&File::open("LICENSE-APACHE")?)?
     /// };
-    /// assert_eq!(&b"Apache License"[..],
-    ///            &mmap[..14]);
+    /// assert_eq!(&b"Apache License"[..], &mmap[..14]);
     /// # Ok(())
     /// # }
     /// ```
@@ -226,15 +228,12 @@ impl MmapOptions {
     /// # Example
     ///
     /// ```
-    /// use memmap2::MmapOptions;
     /// use std::fs::File;
     ///
+    /// use memmap2::MmapOptions;
+    ///
     /// # fn main() -> std::io::Result<()> {
-    /// let mmap = unsafe {
-    ///     MmapOptions::new()
-    ///                 .len(9)
-    ///                 .map(&File::open("README.md")?)?
-    /// };
+    /// let mmap = unsafe { MmapOptions::new().len(9).map(&File::open("README.md")?)? };
     /// assert_eq!(&b"# memmap2"[..], &mmap[..]);
     /// # Ok(())
     /// # }
@@ -318,7 +317,10 @@ impl MmapOptions {
     /// use memmap2::MmapOptions;
     ///
     /// # fn main() -> std::io::Result<()> {
-    /// let stack = MmapOptions::new().huge(Some(21)).len(2*1024*1024).map_anon();
+    /// let stack = MmapOptions::new()
+    ///     .huge(Some(21))
+    ///     .len(2 * 1024 * 1024)
+    ///     .map_anon();
     /// # Ok(())
     /// # }
     /// ```
@@ -330,22 +332,22 @@ impl MmapOptions {
     }
     /// Populate (prefault) page tables for a mapping.
     ///
-    /// For a file mapping, this causes read-ahead on the file. This will help to reduce blocking on page faults later.
+    /// For a file mapping, this causes read-ahead on the file. This will help to reduce blocking on
+    /// page faults later.
     ///
     /// This option corresponds to the `MAP_POPULATE` flag on Linux. It has no effect on Windows.
     ///
     /// # Example
     ///
     /// ```
-    /// use memmap2::MmapOptions;
     /// use std::fs::File;
+    ///
+    /// use memmap2::MmapOptions;
     ///
     /// # fn main() -> std::io::Result<()> {
     /// let file = File::open("LICENSE-MIT")?;
     ///
-    /// let mmap = unsafe {
-    ///     MmapOptions::new().populate().map(&file)?
-    /// };
+    /// let mmap = unsafe { MmapOptions::new().populate().map(&file)? };
     ///
     /// assert_eq!(&b"Copyright"[..], &mmap[..9]);
     /// # Ok(())
@@ -370,9 +372,9 @@ impl MmapOptions {
     /// # Example
     ///
     /// ```
+    /// use std::{fs::File, io::Read};
+    ///
     /// use memmap2::MmapOptions;
-    /// use std::fs::File;
-    /// use std::io::Read;
     ///
     /// # fn main() -> std::io::Result<()> {
     /// let mut file = File::open("LICENSE-APACHE")?;
@@ -380,9 +382,7 @@ impl MmapOptions {
     /// let mut contents = Vec::new();
     /// file.read_to_end(&mut contents)?;
     ///
-    /// let mmap = unsafe {
-    ///     MmapOptions::new().map(&file)?
-    /// };
+    /// let mmap = unsafe { MmapOptions::new().map(&file)? };
     ///
     /// assert_eq!(&contents[..], &mmap[..]);
     /// # Ok(())
@@ -470,9 +470,9 @@ impl MmapOptions {
     /// # Example
     ///
     /// ```
+    /// use std::{fs::File, io::Write};
+    ///
     /// use memmap2::MmapOptions;
-    /// use std::fs::File;
-    /// use std::io::Write;
     ///
     /// # fn main() -> std::io::Result<()> {
     /// let file = File::open("LICENSE-APACHE")?;
@@ -502,9 +502,9 @@ impl MmapOptions {
     /// # Example
     ///
     /// ```
+    /// use std::{fs::File, io::Read};
+    ///
     /// use memmap2::MmapOptions;
-    /// use std::fs::File;
-    /// use std::io::Read;
     ///
     /// # fn main() -> std::io::Result<()> {
     /// let mut file = File::open("README.md")?;
@@ -512,9 +512,7 @@ impl MmapOptions {
     /// let mut contents = Vec::new();
     /// file.read_to_end(&mut contents)?;
     ///
-    /// let mmap = unsafe {
-    ///     MmapOptions::new().map_copy_read_only(&file)?
-    /// };
+    /// let mmap = unsafe { MmapOptions::new().map_copy_read_only(&file)? };
     ///
     /// assert_eq!(&contents[..], &mmap[..]);
     /// # Ok(())
@@ -611,9 +609,9 @@ impl MmapOptions {
 /// ## Example
 ///
 /// ```
+/// use std::{fs::File, io::Write};
+///
 /// use memmap2::MmapOptions;
-/// use std::io::Write;
-/// use std::fs::File;
 ///
 /// # fn main() -> std::io::Result<()> {
 /// let file = File::open("README.md")?;
@@ -645,8 +643,7 @@ impl Mmap {
     /// # Example
     ///
     /// ```
-    /// use std::fs::File;
-    /// use std::io::Read;
+    /// use std::{fs::File, io::Read};
     ///
     /// use memmap2::Mmap;
     ///
@@ -656,7 +653,7 @@ impl Mmap {
     /// let mut contents = Vec::new();
     /// file.read_to_end(&mut contents)?;
     ///
-    /// let mmap = unsafe { Mmap::map(&file)?  };
+    /// let mmap = unsafe { Mmap::map(&file)? };
     ///
     /// assert_eq!(&contents[..], &mmap[..]);
     /// # Ok(())
@@ -872,7 +869,8 @@ impl MmapRaw {
 
     /// Returns the length in bytes of the memory map.
     ///
-    /// Note that truncating the file can cause the length to change (and render this value unusable).
+    /// Note that truncating the file can cause the length to change (and render this value
+    /// unusable).
     #[inline]
     pub fn len(&self) -> usize {
         self.inner.len()
@@ -1122,7 +1120,7 @@ impl MmapMut {
     ///                        .read(true)
     ///                        .write(true)
     ///                        .create(true)
-    ///                        .truncate(true)  
+    ///                        .truncate(true)
     ///                        .open(&path)?;
     /// file.set_len(13)?;
     ///
@@ -1230,8 +1228,7 @@ impl MmapMut {
     /// # Example
     ///
     /// ```
-    /// use std::io::Write;
-    /// use std::path::PathBuf;
+    /// use std::{io::Write, path::PathBuf};
     ///
     /// use memmap2::{Mmap, MmapMut};
     ///
@@ -1448,14 +1445,17 @@ impl RemapOptions {
 #[cfg(test)]
 mod test {
     #[cfg(unix)]
-    use crate::advice::Advice;
-    use std::fs::{File, OpenOptions};
-    use std::io::{Read, Write};
-    use std::mem;
-    #[cfg(unix)]
     use std::os::unix::io::AsRawFd;
     #[cfg(windows)]
     use std::os::windows::fs::OpenOptionsExt;
+    use std::{
+        fs::{File, OpenOptions},
+        io::{Read, Write},
+        mem,
+    };
+
+    #[cfg(unix)]
+    use crate::advice::Advice;
 
     #[cfg(windows)]
     const GENERIC_ALL: u32 = 0x10000000;
