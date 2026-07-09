@@ -14,11 +14,8 @@ pub struct MmapInner {
 
 impl MmapInner {
     fn new(id: u128, map_flags: MapFlags, len: usize, off: u64) -> io::Result<MmapInner> {
-        let handle = twizzler_rt_abi::object::twz_rt_map_object(
-            id.into(),
-            map_flags | MapFlags::NO_NULLPAGE,
-        )
-        .map_err(|_| io::Error::new(io::ErrorKind::Other, "mmap failed"))?;
+        let handle = twizzler_rt_abi::object::twz_rt_map_object(id.into(), map_flags)
+            .map_err(|_| io::Error::new(io::ErrorKind::Other, "mmap failed"))?;
         Ok(Self {
             // TODO: get this from twizzler crate
             handle,
