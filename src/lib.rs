@@ -55,18 +55,22 @@
 
 #![allow(clippy::len_without_is_empty, clippy::missing_safety_doc)]
 
-#[cfg_attr(unix, path = "unix.rs")]
+// Twizzler sets target_family = "unix" but keeps its own backend (twizzler.rs), which
+// models descriptors as &File rather than RawFd. Every `unix` arm below therefore excludes
+// it, and the "neither unix nor windows" arms include it -- the split this file had before
+// the family flip made cfg(unix) true here.
+#[cfg_attr(all(unix, not(target_os = "twizzler")), path = "unix.rs")]
 #[cfg_attr(windows, path = "windows.rs")]
 #[cfg_attr(target_os = "twizzler", path = "twizzler.rs")]
 #[cfg_attr(not(any(unix, windows, target_os = "twizzler")), path = "stub.rs")]
 mod os;
 use crate::os::{file_len, MmapInner};
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "twizzler")))]
 mod advice;
-#[cfg(not(any(unix, windows)))]
+#[cfg(any(target_os = "twizzler", not(any(unix, windows))))]
 use std::fs::File;
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "twizzler")))]
 use std::os::unix::io::{AsRawFd, RawFd};
 #[cfg(windows)]
 use std::os::windows::io::{AsRawHandle, RawHandle};
@@ -78,13 +82,13 @@ use std::{
     slice,
 };
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "twizzler")))]
 pub use crate::advice::{Advice, UncheckedAdvice};
 
-#[cfg(not(any(unix, windows)))]
+#[cfg(any(target_os = "twizzler", not(any(unix, windows))))]
 pub struct MmapRawDescriptor<'a>(&'a File);
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "twizzler")))]
 pub struct MmapRawDescriptor(RawFd);
 
 #[cfg(windows)]
@@ -94,21 +98,21 @@ pub trait MmapAsRawDesc {
     fn as_raw_desc(&self) -> MmapRawDescriptor;
 }
 
-#[cfg(not(any(unix, windows)))]
+#[cfg(any(target_os = "twizzler", not(any(unix, windows))))]
 impl MmapAsRawDesc for &File {
     fn as_raw_desc(&self) -> MmapRawDescriptor {
         MmapRawDescriptor(self)
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "twizzler")))]
 impl MmapAsRawDesc for RawFd {
     fn as_raw_desc(&self) -> MmapRawDescriptor {
         MmapRawDescriptor(*self)
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "twizzler")))]
 impl<T> MmapAsRawDesc for &T
 where
     T: AsRawFd,
@@ -708,7 +712,7 @@ impl Mmap {
     /// Only supported on Unix.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn advise(&self, advice: Advice) -> Result<()> {
         self.inner
             .advise(advice as libc::c_int, 0, self.inner.len())
@@ -719,7 +723,7 @@ impl Mmap {
     /// Used with the [unchecked flags][UncheckedAdvice]. Only supported on Unix.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub unsafe fn unchecked_advise(&self, advice: UncheckedAdvice) -> Result<()> {
         self.inner
             .advise(advice as libc::c_int, 0, self.inner.len())
@@ -732,7 +736,7 @@ impl Mmap {
     /// The offset and length must be in the bounds of the memory map.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn advise_range(&self, advice: Advice, offset: usize, len: usize) -> Result<()> {
         self.inner.advise(advice as libc::c_int, offset, len)
     }
@@ -744,7 +748,7 @@ impl Mmap {
     /// The offset and length must be in the bounds of the memory map.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub unsafe fn unchecked_advise_range(
         &self,
         advice: UncheckedAdvice,
@@ -757,7 +761,7 @@ impl Mmap {
     /// Lock the whole memory map into RAM. Only supported on Unix.
     ///
     /// See [mlock()](https://man7.org/linux/man-pages/man2/mlock.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn lock(&self) -> Result<()> {
         self.inner.lock()
     }
@@ -765,7 +769,7 @@ impl Mmap {
     /// Unlock the whole memory map. Only supported on Unix.
     ///
     /// See [munlock()](https://man7.org/linux/man-pages/man2/munlock.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn unlock(&self) -> Result<()> {
         self.inner.unlock()
     }
@@ -953,7 +957,7 @@ impl MmapRaw {
     /// Only supported on Unix.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn advise(&self, advice: Advice) -> Result<()> {
         self.inner
             .advise(advice as libc::c_int, 0, self.inner.len())
@@ -964,7 +968,7 @@ impl MmapRaw {
     /// Used with the [unchecked flags][UncheckedAdvice]. Only supported on Unix.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub unsafe fn unchecked_advise(&self, advice: UncheckedAdvice) -> Result<()> {
         self.inner
             .advise(advice as libc::c_int, 0, self.inner.len())
@@ -977,7 +981,7 @@ impl MmapRaw {
     /// Only supported on Unix.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn advise_range(&self, advice: Advice, offset: usize, len: usize) -> Result<()> {
         self.inner.advise(advice as libc::c_int, offset, len)
     }
@@ -989,7 +993,7 @@ impl MmapRaw {
     /// The offset and length must be in the bounds of the memory map.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub unsafe fn unchecked_advise_range(
         &self,
         advice: UncheckedAdvice,
@@ -1002,7 +1006,7 @@ impl MmapRaw {
     /// Lock the whole memory map into RAM. Only supported on Unix.
     ///
     /// See [mlock()](https://man7.org/linux/man-pages/man2/mlock.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn lock(&self) -> Result<()> {
         self.inner.lock()
     }
@@ -1010,7 +1014,7 @@ impl MmapRaw {
     /// Unlock the whole memory map. Only supported on Unix.
     ///
     /// See [munlock()](https://man7.org/linux/man-pages/man2/munlock.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn unlock(&self) -> Result<()> {
         self.inner.unlock()
     }
@@ -1270,7 +1274,7 @@ impl MmapMut {
     /// Only supported on Unix.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn advise(&self, advice: Advice) -> Result<()> {
         self.inner
             .advise(advice as libc::c_int, 0, self.inner.len())
@@ -1281,7 +1285,7 @@ impl MmapMut {
     /// Used with the [unchecked flags][UncheckedAdvice]. Only supported on Unix.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub unsafe fn unchecked_advise(&self, advice: UncheckedAdvice) -> Result<()> {
         self.inner
             .advise(advice as libc::c_int, 0, self.inner.len())
@@ -1294,7 +1298,7 @@ impl MmapMut {
     /// The offset and length must be in the bounds of the memory map.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn advise_range(&self, advice: Advice, offset: usize, len: usize) -> Result<()> {
         self.inner.advise(advice as libc::c_int, offset, len)
     }
@@ -1306,7 +1310,7 @@ impl MmapMut {
     /// The offset and length must be in the bounds of the memory map.
     ///
     /// See [madvise()](https://man7.org/linux/man-pages/man2/madvise.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub unsafe fn unchecked_advise_range(
         &self,
         advice: UncheckedAdvice,
@@ -1319,7 +1323,7 @@ impl MmapMut {
     /// Lock the whole memory map into RAM. Only supported on Unix.
     ///
     /// See [mlock()](https://man7.org/linux/man-pages/man2/mlock.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn lock(&self) -> Result<()> {
         self.inner.lock()
     }
@@ -1327,7 +1331,7 @@ impl MmapMut {
     /// Unlock the whole memory map. Only supported on Unix.
     ///
     /// See [munlock()](https://man7.org/linux/man-pages/man2/munlock.2.html) map page.
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     pub fn unlock(&self) -> Result<()> {
         self.inner.unlock()
     }
@@ -1444,7 +1448,7 @@ impl RemapOptions {
 
 #[cfg(test)]
 mod test {
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     use std::os::unix::io::AsRawFd;
     #[cfg(windows)]
     use std::os::windows::fs::OpenOptionsExt;
@@ -1454,7 +1458,7 @@ mod test {
         mem,
     };
 
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     use crate::advice::Advice;
 
     #[cfg(windows)]
@@ -1496,7 +1500,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     fn map_fd() {
         let expected_len = 128;
         let tempdir = tempfile::tempdir().unwrap();
@@ -1963,7 +1967,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     fn advise() {
         let expected_len = 128;
         let tempdir = tempfile::tempdir().unwrap();
@@ -2071,7 +2075,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(unix)]
+    #[cfg(all(unix, not(target_os = "twizzler")))]
     fn lock() {
         let tempdir = tempfile::tempdir().unwrap();
         let path = tempdir.path().join("mmap_lock");
